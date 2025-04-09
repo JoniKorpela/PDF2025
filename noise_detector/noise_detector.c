@@ -10,7 +10,7 @@
 
 /* can be tweaked */
 #define SAMPLE_COUNT 10
-#define SAMPLE_WINDOW_MICROSECONDS (100 * 1000)
+#define SAMPLE_WINDOW_MICROSECONDS (100 * 1000) /* 100 ms */
 
 /* should be tweaked */
 #define VIOLATION_THRESHOLD 0.5f
@@ -20,7 +20,7 @@
 #define ADC_RANGE (1 << 12)
 
 /* remap [0,4095] to [0,1] */
-#define NORMALIZE_VOLUME(adc_reading) ((adc_reading) * (1.0f / (ADC_RANGE - 1)))
+#define ADC_NORMALIZE(adc_reading) ((adc_reading) * (1.0f / (ADC_RANGE - 1)))
 
 /* tells the kids to shut the fuck up */
 static void toot_horn(int violation_num)
@@ -51,7 +51,7 @@ static int peak_to_peak_100ms(void)
   while (1)
   {
     uint64_t current = time_us_64();
-    if (current - start >= 100000)
+    if (current - start >= SAMPLE_WINDOW_MICROSECONDS)
     {
       /* done */
       break;
@@ -85,14 +85,14 @@ int main(void)
       int sample = peak_to_peak_100ms();
       accum += sample;
 
-      update_display("Volume level: %.2f", NORMALIZE_VOLUME(sample));
+      update_display("Volume level: %.2f", ADC_NORMALIZE(sample));
     }
 
     /* take the average */
     int average = accum / SAMPLE_COUNT;
 
     /* normalize to [0-1] */
-    float loudness = NORMALIZE_VOLUME(average);
+    float loudness = ADC_NORMALIZE(average);
 
     if (loudness > VIOLATION_THRESHOLD)
     {
