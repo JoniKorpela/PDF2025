@@ -8,12 +8,15 @@
 #include "hardware/uart.h"
 #include "pico/binary_info.h"
 
+#include "buzzer.h"
+#include "display.h"
+
 /* can be tweaked */
 #define SAMPLE_COUNT 10
 #define SAMPLE_WINDOW_MICROSECONDS (100 * 1000) /* 100 ms */
 
 /* should be tweaked */
-#define VIOLATION_THRESHOLD 0.5f
+#define VIOLATION_THRESHOLD 0.6f
 
 #define ADC_NUM 0
 #define ADC_PIN (26 + ADC_NUM)
@@ -25,6 +28,7 @@
 /* tells the kids to shut the fuck up */
 static void toot_horn(int violation_num)
 {
+  toot_buzzer();
 }
 
 static void update_display(const char *fmt, ...)
@@ -38,7 +42,7 @@ static void update_display(const char *fmt, ...)
 
   /* FIXME: actually update the display */
   puts(buffer);
-  show()
+  lcd_show(buffer);
 }
 
 /* coarse peak-to-peak adc voltage estimation over a 100 ms period */
@@ -68,7 +72,10 @@ static int peak_to_peak_100ms(void)
 
 int main(void)
 {
+  init_buzzer();
   stdio_init_all();
+
+  display_lcd_message();
 
   adc_init();
   adc_gpio_init(ADC_PIN);
@@ -99,10 +106,12 @@ int main(void)
     {
       violation_count++;
 
-      /* debug prints */
-      printf("too loud (violation #%d): %.2f\n", violation_count, loudness);
+      update_display("STFU KIDS warning number %d", violation_count);
 
       toot_horn(violation_count);
+
+      /* debug prints */
+      printf("too loud (violation #%d): %.2f\n", violation_count, loudness);
     }
     else
     {

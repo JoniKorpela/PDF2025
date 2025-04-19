@@ -21,8 +21,8 @@ project(noise_detector)
 
 pico_sdk_init()
 
-add_executable(noise_detector noise_detector.c)
-target_link_libraries(noise_detector pico_stdlib hardware_adc)
+add_executable(noise_detector noise_detector.c display.c buzzer.c)
+target_link_libraries(noise_detector pico_stdlib hardware_adc hardware_i2c hardware_pwm)
 
 # usb output, please
 pico_enable_stdio_usb(noise_detector 1)
