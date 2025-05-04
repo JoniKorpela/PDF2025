@@ -16,7 +16,7 @@
 #define SAMPLE_WINDOW_MICROSECONDS (100 * 1000) /* 100 ms */
 
 /* should be tweaked */
-#define VIOLATION_THRESHOLD 0.6f
+#define VIOLATION_THRESHOLD 0.75f
 
 #define ADC_NUM 0
 #define ADC_PIN (26 + ADC_NUM)
@@ -28,7 +28,7 @@
 /* tells the kids to shut the fuck up */
 static void toot_horn(int violation_num)
 {
-  toot_buzzer();
+  toot_buzzer(violation_num);
 }
 
 static void update_display(const char *fmt, ...)
@@ -70,6 +70,11 @@ static int peak_to_peak_100ms(void)
   return max_sample - min_sample;
 }
 
+static float remap_float(float value, float low1, float high1, float low2, float high2)
+{
+  return low2 + (value - low1) * (high2 - low2) / (high1 - low1);
+}
+
 int main(void)
 {
   init_buzzer();
@@ -82,6 +87,8 @@ int main(void)
   adc_select_input(ADC_NUM);
 
   int violation_count = 0;
+  int old_display_value = -1; /* refresh immediately */
+  float lowest_loudness = 9999999; /* baseline for 0% noise */
 
   while (1)
   {
@@ -92,8 +99,6 @@ int main(void)
     {
       int sample = peak_to_peak_100ms();
       accum += sample;
-
-      update_display("Volume level: %.2f", ADC_NORMALIZE(sample));
     }
 
     /* take the average */
@@ -101,20 +106,34 @@ int main(void)
 
     /* normalize to [0-1] */
     float loudness = ADC_NORMALIZE(average);
+	lowest_loudness = (loudness < lowest_loudness) ? loudness : lowest_loudness;
 
     if (loudness > VIOLATION_THRESHOLD)
     {
       violation_count++;
 
-      update_display("STFU KIDS warning number %d", violation_count);
+      update_display("Too loud!");
 
       toot_horn(violation_count);
 
       /* debug prints */
       printf("too loud (violation #%d): %.2f\n", violation_count, loudness);
+
+	  /* invalidate so it gets recomputed */
+	  old_display_value = -1;
     }
     else
     {
+	  /* update the display...
+	  temp fudge to make this more intuitive: treat lowest recorded as 0 and VIOLATION_THRESHOLD as 100%
+	  value is cached off so we don't update it unnecessarily (causes ugly flickering) */
+	  int display_value = (int)remap_float(loudness, lowest_loudness, VIOLATION_THRESHOLD, 0.0f, 100.0f);
+	  if (display_value != old_display_value)
+	  {
+		update_display("Noise OK: %d%%", display_value);
+		old_display_value = display_value;
+	  }
+
       /* debug prints */
       printf("ok: %.2f\n", loudness);
     }

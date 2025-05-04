@@ -7,6 +7,6 @@
 #include "hardware/pwm.h"
 
 void init_buzzer();
-void toot_buzzer();
+void toot_buzzer(int duration);
 
 #endif
